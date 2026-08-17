@@ -46,7 +46,7 @@ chmod +x setup.sh refresh-devspace-mcp.sh
 
 `setup.sh` 会交互式运行 `devspace init`，按提示填：
 
-- **项目目录**：想让 ChatGPT/Codex 访问的本地目录（如 `/home/lijian/project/open-vela`）
+- **项目目录**：想让 ChatGPT/Codex 访问的本地目录（如 `/path/to/your/project`）
 - **端口**：`7676`
 - **公网 base URL**：先随便填，`refresh-devspace-mcp.sh` 第一次运行会自动改写 `config.json` 的 `publicBaseUrl`
 

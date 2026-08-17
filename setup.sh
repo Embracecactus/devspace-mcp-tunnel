@@ -37,7 +37,7 @@ npm install -g @waishnav/devspace
 
 echo "==> Running 'devspace init' (interactive)"
 echo "    - Project directory : the local dir you want ChatGPT/Codex to access"
-echo "                         (e.g. /home/lijian/project/open-vela)"
+echo "                         (e.g. /path/to/your/project)"
 echo "    - Port              : 7676"
 echo "    - Public base URL   : the ORIGIN of your tunnel, WITHOUT /mcp"
 echo "                         (you may type anything now; refresh-devspace-mcp.sh"
