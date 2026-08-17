@@ -21,9 +21,14 @@ usage() {
   cat <<'EOF'
 Usage:
   ./refresh-devspace-mcp.sh --tunnel-cmd "<command>" [options]
+  ./refresh-devspace-mcp.sh --known-url "https://host/mcp" [options]
 
 Options:
-  --tunnel-cmd CMD        Shell command to start tunnel (required)
+  --tunnel-cmd CMD        Shell command to start the tunnel (required unless --known-url)
+  --known-url URL         Skip tunnel start/extract; use this URL directly (must end with /mcp).
+                          Use this when you run your own tunnel (ngrok, cloudflared, bore, ...).
+  --url-regex REGEX       Regex used to extract the tunnel URL from the tunnel output.
+                          Default matches Pinggy: https://[^[:space:]]*\.free\.pinggy\.net[^[:space:]]*
   --devspace-cmd CMD      Command to start devspace serve (default: devspace serve)
   --stop-cmd CMD          Command to stop old devspace process (default: pkill -f 'devspace serve')
   --stop-tunnel-cmd CMD   Command to stop old tunnel (default: kill tmux 'pinggy' session + PID from $HOME/.devspace/tunnel.pid)
@@ -34,9 +39,19 @@ Options:
   --timeout SECONDS       Seconds to wait for tunnel URL (default: 90)
   --help                  Show this message
 
-Example:
+Examples:
+  # Pinggy (default)
   ./refresh-devspace-mcp.sh \
     --tunnel-cmd "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -p 443 -R0:localhost:7676 a.pinggy.io"
+
+  # Any other tunnel: let the script capture the URL
+  ./refresh-devspace-mcp.sh \
+    --tunnel-cmd "ngrok http 7676" \
+    --url-regex 'https://[a-z0-9-]+\.ngrok-free\.app'
+
+  # Any other tunnel: you already know the URL, skip tunnel management
+  ./refresh-devspace-mcp.sh \
+    --known-url "https://abc-def.ngrok-free.app/mcp"
 EOF
   exit "${1:-0}"
 }
@@ -56,6 +71,11 @@ DEVS_CONFIG="$HOME/.devspace/config.json"
 CODEX_CONFIG="$HOME/.codex/config.toml"
 TIMEOUT=90
 TUNNEL_CMD=""
+# Regex used to capture the tunnel URL from the tunnel process output.
+# Default matches Pinggy's free tunnel hosts; override with --url-regex.
+URL_REGEX='https://[^[:space:]]*\.free\.pinggy\.net[^[:space:]]*'
+# When set, tunnel start/extract is skipped and this URL is used as-is.
+KNOWN_URL=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -96,6 +116,14 @@ while [[ $# -gt 0 ]]; do
       TIMEOUT="${2-}"
       shift 2
       ;;
+    --url-regex)
+      URL_REGEX="${2-}"
+      shift 2
+      ;;
+    --known-url)
+      KNOWN_URL="${2-}"
+      shift 2
+      ;;
     --help)
       usage 0
       ;;
@@ -105,7 +133,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$TUNNEL_CMD" ]]; then
+if [[ -z "$TUNNEL_CMD" && -z "$KNOWN_URL" ]]; then
   usage
 fi
 
@@ -127,18 +155,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "[0/4] stop old tunnel (if any)"
-eval "$STOP_TUNNEL_CMD" || true
-
-echo "[1/4] start tunnel in background"
-bash -lc "$TUNNEL_CMD" >"$LOG_FILE" 2>&1 &
-TUNNEL_PID=$!
-disown "$TUNNEL_PID"
-echo "$TUNNEL_PID" > "$TUNNEL_PIDFILE"
-
+# Capture the tunnel URL from the tunnel process output using URL_REGEX.
 extract_url() {
   local u
-  u="$(grep -Eo 'https://[^[:space:]]*\.free\.pinggy\.net[^[:space:]]*' "$LOG_FILE" | tail -n 1 || true)"
+  u="$(grep -Eo "$URL_REGEX" "$LOG_FILE" | tail -n 1 || true)"
   [[ -z "$u" ]] && return 1
   if [[ "$u" != */mcp ]]; then
     u="${u%/}/mcp"
@@ -146,20 +166,37 @@ extract_url() {
   printf '%s\n' "$u"
 }
 
-NEW_URL=""
-for ((i = 1; i <= TIMEOUT; i++)); do
-  sleep 1
-  if u="$(extract_url)"; then
-    NEW_URL="$u"
-    break
-  fi
-done
+if [[ -n "$KNOWN_URL" ]]; then
+  # User supplies the tunnel URL directly (their own tunnel already running).
+  # Skip all tunnel start/stop/extract logic.
+  NEW_URL="$KNOWN_URL"
+  [[ "$NEW_URL" != */mcp ]] && NEW_URL="${NEW_URL%/}/mcp"
+  echo "[0/4] using --known-url (no tunnel management)"
+else
+  echo "[0/4] stop old tunnel (if any)"
+  eval "$STOP_TUNNEL_CMD" || true
 
-if [[ -z "$NEW_URL" ]]; then
-  echo "Failed to capture new Pinggy URL in $TIMEOUT seconds."
-  echo "--- tunnel log tail ---"
-  tail -n 40 "$LOG_FILE"
-  exit 1
+  echo "[1/4] start tunnel in background"
+  bash -lc "$TUNNEL_CMD" >"$LOG_FILE" 2>&1 &
+  TUNNEL_PID=$!
+  disown "$TUNNEL_PID"
+  echo "$TUNNEL_PID" > "$TUNNEL_PIDFILE"
+
+  NEW_URL=""
+  for ((i = 1; i <= TIMEOUT; i++)); do
+    sleep 1
+    if u="$(extract_url)"; then
+      NEW_URL="$u"
+      break
+    fi
+  done
+
+  if [[ -z "$NEW_URL" ]]; then
+    echo "Failed to capture the tunnel URL in $TIMEOUT seconds."
+    echo "--- tunnel log tail ---"
+    tail -n 40 "$LOG_FILE"
+    exit 1
+  fi
 fi
 
 echo "[2/4] update MCP config -> $MCP_JSON"
@@ -199,4 +236,6 @@ eval "$STOP_CMD" || true
 
 echo "Done."
 echo "New URL: $NEW_URL"
-echo "Tunnel PID: $TUNNEL_PID (kept alive)"
+if [[ -n "${TUNNEL_PID:-}" ]]; then
+  echo "Tunnel PID: $TUNNEL_PID (kept alive)"
+fi

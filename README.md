@@ -58,6 +58,32 @@ chmod +x setup.sh refresh-devspace-mcp.sh
 
 脚本会依次：停旧隧道 → 起新隧道 → 抓取新地址 → 更新 `.mcp.json`、`~/.devspace/config.json`、`~/.codex/config.toml` → 重启 DevSpace。
 
+### 2b. 用其他隧道（ngrok / cloudflared / bore …）
+
+本脚本**不绑定 Pinggy**，只要告诉它怎么抓地址即可：
+
+**方式 A：让脚本抓地址**（隧道会把 URL 打到 stdout）
+
+```bash
+# ngrok 示例：用 --url-regex 指定抓取规则
+./refresh-devspace-mcp.sh \
+  --tunnel-cmd "ngrok http 7676" \
+  --url-regex 'https://[a-z0-9-]+\.ngrok-free\.app'
+
+# cloudflared 示例
+./refresh-devspace-mcp.sh \
+  --tunnel-cmd "cloudflared tunnel --url http://localhost:7676" \
+  --url-regex 'https://[a-z0-9-]+\.trycloudflare\.com'
+```
+
+**方式 B：你已经有地址，跳过隧道管理**
+
+```bash
+./refresh-devspace-mcp.sh --known-url "https://abc-123.ngrok-free.app/mcp"
+```
+
+脚本只做"同步 3 处配置 + 重启 DevSpace"，不打理隧道（你自己的隧道自行运行）。
+
 ### 3. 客户端授权
 
 **Codex CLI：**
