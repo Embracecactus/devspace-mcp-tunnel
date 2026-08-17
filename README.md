@@ -226,6 +226,11 @@ make finalize REPORT=review-report.md     # ③ 汇总统计 + 渲染 HTML
 5. **npm 默认源卡死**
    国内网络直接用默认 npm registry 会长时间挂起。用 `./setup.sh --mirror`（已 `npm config set registry https://registry.npmmirror.com`）。
 
+6. **隧道进程随父 shell 退出而消失（公网地址 curl 返回 000）**
+   `refresh-devspace-mcp.sh` 启动隧道时若不用 `setsid`，父 shell（如 `make`/非交互终端）一退出，
+   隧道 ssh 进程就会收到 SIGHUP 被杀，导致公网地址后面没有活进程。脚本已改用 `setsid` 启动隧道
+   （与 devspace serve 一致），可独立存活。若你手动起隧道，记得加 `setsid` 或用 `nohup`。
+
 ---
 
 ## 安全提示

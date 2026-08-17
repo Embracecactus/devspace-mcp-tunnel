@@ -177,7 +177,10 @@ else
   eval "$STOP_TUNNEL_CMD" || true
 
   echo "[1/4] start tunnel in background"
-  bash -lc "$TUNNEL_CMD" >"$LOG_FILE" 2>&1 &
+  # setsid detaches into a new session so the tunnel survives the parent shell /
+  # terminal exit (avoids SIGHUP). PATH is already patched above so the tunnel
+  # command (often an `ssh ...`) resolves.
+  setsid bash -lc "$TUNNEL_CMD" >"$LOG_FILE" 2>&1 &
   TUNNEL_PID=$!
   disown "$TUNNEL_PID"
   echo "$TUNNEL_PID" > "$TUNNEL_PIDFILE"
