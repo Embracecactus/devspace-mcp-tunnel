@@ -1,0 +1,14 @@
+# DevSpace runtime state — contains the Owner password (auth.json) and the
+# live tunnel URL (config.json). NEVER commit these.
+.devspace/
+
+# Live MCP config with the current (ephemeral) tunnel URL.
+.mcp.json
+
+# Refresh script working files.
+*.pid
+*.log
+
+# Editor / OS noise.
+.DS_Store
+*.swp

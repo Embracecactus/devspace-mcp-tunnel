@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "devspace": {
+      "url": "https://YOUR-TUNNEL-HOST.free.pinggy.net/mcp"
+    }
+  }
+}
