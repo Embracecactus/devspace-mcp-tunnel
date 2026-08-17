@@ -125,6 +125,41 @@ CodeBuddy 参与。DevSpace 暴露的 **shell + 文件访问** 就是 agent 的"
 - `templates/review-report.md`：完整报告模板（概述 / 范围 / 原则 / 文件清单 / 问题清单 / 总结）。
 - `templates/issue-list.md`：精简的问题清单模板（单表）。
 
+#### 汇总统计（填完问题表后）
+
+agent 把问题填进报告后，用 `--summarize` 自动按**严重度 / 类型**统计：
+
+```bash
+./review.sh --summarize review-report.md            # 打印统计
+./review.sh --summarize review-report.md --summarize-out summary.md  # 同时写入文件
+```
+
+输出示例：
+
+```
+## 统计汇总
+- 总计问题数：**4**
+### 按严重度
+- 高：2
+- 中：1
+- 低：1
+### 按类型
+- 资源泄漏：1
+- 并发：1
+- 空指针：1
+- 风格：1
+```
+
+#### 渲染成 HTML（方便分享/归档）
+
+`report-to-html.sh` 把 Markdown 报告转成独立 HTML。优先用 `pandoc`（若已安装），
+否则用脚本内置的轻量转换器（支持标题、表格、列表、`**加粗**`、`` `代码` ``，无额外依赖）：
+
+```bash
+./report-to-html.sh --in review-report.md                 # 生成 review-report.html
+./report-to-html.sh --in review-report.md --out out.html   # 指定输出
+```
+
 和 agent 约定的审查原则：纯静态人工审查、不修改代码、不参与 CI 修复；
 仅产出问题清单与报告，是否采纳修复由人工决定。
 
@@ -136,7 +171,8 @@ CodeBuddy 参与。DevSpace 暴露的 **shell + 文件访问** 就是 agent 的"
 | --- | --- |
 | `setup.sh` | 安装 DevSpace + 跑 `devspace init`（`--mirror` 走国内镜像） |
 | `refresh-devspace-mcp.sh` | 重建隧道、抓新地址、同步 3 处配置、重启 DevSpace |
-| `review.sh` | 静态审查脚手架（只读）：扫描目录、生成带问题表的报告骨架 |
+| `review.sh` | 静态审查脚手架（只读）：扫描目录生成报告骨架；`--summarize` 按严重度/类型汇总 |
+| `report-to-html.sh` | 把审查报告 Markdown 渲染成 HTML（优先 pandoc，否则内置轻量转换器） |
 | `templates/review-report.md` | 完整审查报告模板 |
 | `templates/issue-list.md` | 精简问题清单模板 |
 | `.mcp.json.example` | 项目级 MCP 配置模板，复制为 `.mcp.json` 后把 URL 换成实际隧道地址 |
