@@ -163,6 +163,24 @@ agent 把问题填进报告后，用 `--summarize` 自动按**严重度 / 类型
 和 agent 约定的审查原则：纯静态人工审查、不修改代码、不参与 CI 修复；
 仅产出问题清单与报告，是否采纳修复由人工决定。
 
+### 6. 用 Makefile 一条龙
+
+仓库根目录的 `Makefile` 把上面的脚本串成统一入口，变量可在命令行覆盖：
+
+```bash
+make help                                 # 查看所有目标
+make install MIRROR=1                     # 安装 + 初始化（国内镜像）
+make tunnel                               # 默认 Pinggy 隧道刷新
+make tunnel TUNNEL_CMD="ngrok http 7676" URL_REGEX="https://[a-z0-9-]+\.ngrok-free\.app"  # 其他隧道
+make tunnel-known KNOWN_URL="https://x.ngrok-free.app/mcp"   # 已有地址，跳过隧道管理
+
+make report REVIEW_PATH=src NAME_GLOB=*.c REPORT=review-report.md   # ① 生成骨架
+# ② agent 在骨架上填写问题
+make finalize REPORT=review-report.md     # ③ 汇总统计 + 渲染 HTML
+```
+
+> `finalize` = `summarize` + `html`，在报告填好之后一键产出统计与可分享的 HTML。
+
 ---
 
 ## 文件说明
@@ -173,6 +191,7 @@ agent 把问题填进报告后，用 `--summarize` 自动按**严重度 / 类型
 | `refresh-devspace-mcp.sh` | 重建隧道、抓新地址、同步 3 处配置、重启 DevSpace |
 | `review.sh` | 静态审查脚手架（只读）：扫描目录生成报告骨架；`--summarize` 按严重度/类型汇总 |
 | `report-to-html.sh` | 把审查报告 Markdown 渲染成 HTML（优先 pandoc，否则内置轻量转换器） |
+| `Makefile` | 整合工具链：`make install/tunnel/report/summarize/html/finalize` |
 | `templates/review-report.md` | 完整审查报告模板 |
 | `templates/issue-list.md` | 精简问题清单模板 |
 | `.mcp.json.example` | 项目级 MCP 配置模板，复制为 `.mcp.json` 后把 URL 换成实际隧道地址 |
