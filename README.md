@@ -105,6 +105,29 @@ Settings → Apps & Connectors → Advanced → Developer Mode → Create connec
 
 免费隧道约 60 分钟失效。重跑第 2 步的命令即可**全自动**刷新（无需手动改任何配置）。
 
+### 5. 把它当 agent 用：静态代码审查（不改代码）
+
+本套件的目的不是"只把文件给你看"，而是让连上来的 ChatGPT/Codex **像一个 agent 一样**
+直接操作你的工作区：读文件、`grep`/读代码、跑脚本、产出审查结论——全程不需要本地
+CodeBuddy 参与。DevSpace 暴露的 **shell + 文件访问** 就是 agent 的"手和眼"
+（等价 `codegraph + shell` 的组合）。
+
+典型用法：让 agent 做**纯静态人工审查 + 问题清单 + 报告**，不修改源码、不参与 CI 修复。
+本仓库附带 `review.sh` 与 `templates/`，把这套产出结构化、可复用：
+
+```bash
+# 在已被 DevSpace 暴露的工作区里（或直接由 agent 通过 DevSpace shell 调用）
+./review.sh --path src --glob '*.c' --out review-report.md
+```
+
+- `review.sh`：只读脚本。扫描目录、列出待审查文件、生成带空问题表的报告骨架。
+  **不修改任何源码**，agent 在骨架上填写发现的问题即可。
+- `templates/review-report.md`：完整报告模板（概述 / 范围 / 原则 / 文件清单 / 问题清单 / 总结）。
+- `templates/issue-list.md`：精简的问题清单模板（单表）。
+
+和 agent 约定的审查原则：纯静态人工审查、不修改代码、不参与 CI 修复；
+仅产出问题清单与报告，是否采纳修复由人工决定。
+
 ---
 
 ## 文件说明
@@ -113,6 +136,9 @@ Settings → Apps & Connectors → Advanced → Developer Mode → Create connec
 | --- | --- |
 | `setup.sh` | 安装 DevSpace + 跑 `devspace init`（`--mirror` 走国内镜像） |
 | `refresh-devspace-mcp.sh` | 重建隧道、抓新地址、同步 3 处配置、重启 DevSpace |
+| `review.sh` | 静态审查脚手架（只读）：扫描目录、生成带问题表的报告骨架 |
+| `templates/review-report.md` | 完整审查报告模板 |
+| `templates/issue-list.md` | 精简问题清单模板 |
 | `.mcp.json.example` | 项目级 MCP 配置模板，复制为 `.mcp.json` 后把 URL 换成实际隧道地址 |
 | `.gitignore` | 忽略含密码的 `.devspace/` 和带临时地址的 `.mcp.json` |
 
